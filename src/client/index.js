@@ -43,7 +43,7 @@ export const {
                 ctx.setTimeout( () => this.#localStorage.setItem( key, val ), 0 );
                 return val;
             }
-            val = this.#localStorage?.getItem( key );
+            val = this.#localStorage.getItem( key );
             /* istanbul ignore next */
             if( typeof val === 'undefined' ) { return };
             ctx.setTimeout( () => jsCookie.set( key, val ), 0 );
