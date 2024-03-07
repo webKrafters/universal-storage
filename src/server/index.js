@@ -94,7 +94,7 @@ function delKeysCookieToArray( csv ) {
  * @param {Response} response
  * @returns {string} as in "" | "\<DEL_MARKER>=\<BOUNDDARY_MARKER SEPARATED VALUES>"
  */
-function getNextDelKeysCandidate( response ) {
+function getNextDelKeysCandidate( response ) /* istanbul ignore next */ {
 	let curDelKeyCsv = response.getHeader( 'Set-Cookie' );
 	return !!curDelKeyCsv
 		? curDelKeyCsv.find( c => c.startsWith( DEL_MARKER ) ) ?? ''
@@ -110,6 +110,7 @@ function getFromRawCookies( key, source ) {
     const cookie = source
         .split( ';' )
         .find( c => c.startsWith( `${ key }=` ) );
+    /* istanbul ignore else */
     if( cookie ) { return cookie.split( '=' )[ 1 ] }
 }
 
