@@ -124,7 +124,15 @@ export const {
 
     return { ClientStorage, discardStorage, getStorage, storage };
 
-} )( window || self || global || {} );
+} )(
+    /* istanbul ignore next */
+    typeof window !== 'undefined' ? window :
+    /* istanbul ignore next */
+    typeof self !== 'undeifned' ? self :
+    /* istanbul ignore next */
+    typeof global !== 'undefined' ? global :
+    {}
+);
 
 /** @typedef {import("..").Id} Id */
 /**

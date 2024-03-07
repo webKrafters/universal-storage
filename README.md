@@ -1,7 +1,7 @@
 # Universal Storage
-A permanent storage based on client domain cookies with a local-storage fallback.
+A persistent client-server coordinated storage based on client domain cookies with a local-storage fallback.
 
-### Name
+### Name:
 <strong>@webkrafters/universal-storage</strong>
 
 # Installation
