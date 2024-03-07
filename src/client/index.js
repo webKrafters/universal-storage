@@ -128,7 +128,7 @@ export const {
     /* istanbul ignore next */
     typeof window !== 'undefined' ? window :
     /* istanbul ignore next */
-    typeof self !== 'undeifned' ? self :
+    typeof self !== 'undefined' ? self :
     /* istanbul ignore next */
     typeof global !== 'undefined' ? global :
     {}
