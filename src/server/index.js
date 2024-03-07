@@ -7,29 +7,30 @@ import { Base } from '../base';
 
 import { StorageRef } from '../helper/ref';
 
-const DEFAULT_REQUEST = {};
+const DEFAULT_OBJ = {};
 const toString = Object.prototype.toString;
 
 export class ServerStorage extends Base {
     /* istanbul ignore next */ 
 	/** @type {Base["getItem"]} */
-	getItem( key, request = DEFAULT_REQUEST ){
+	getItem( key, request = DEFAULT_OBJ ){
 		switch( toString.call( request.cookies ) ) {
             case '[object Object]': return request.cookies[ key ];
             case '[object String]': return getFromRawCookies( key, request.cookies );
         }
-        const cookies = request?.getHeader( 'Cookie' );
+        const cookies = request.getHeader?.( 'Cookie' );
         if( toString.call( cookies ) === '[object String]' ) {
             return getFromRawCookies( key, cookies );
         }
 	}
+	/* istanbul ignore next */
 	/** @type {Base["removeItem"]} */
-	removeItem( key, value, response ) {
-         /* istanbul ignore next */ 
-		if( typeof response?.setHeader === 'undefined' ) { return }
-		response.setHeader( 'Set-Cookie', `${ key }=${ value }; max-age=0` );
+	removeItem( key, value, response = DEFAULT_OBJ ) {
+        /* istanbul ignore next */ 
+		if( typeof response.setHeader === 'undefined' ) { return }
 		let curDelKeyCsv = getNextDelKeysCandidate( response );
-		if( !( curDelKeyCsv?.length ) ) {
+		response.setHeader( 'Set-Cookie', `${ key }=${ value }; max-age=0` );
+		if( !curDelKeyCsv.length ) {
 			response.setHeader( 'Set-Cookie', `${ DEL_MARKER }${ key }` );
 			return;
 		}
@@ -38,13 +39,14 @@ export class ServerStorage extends Base {
 			'Set-Cookie', `${ DEL_MARKER }${[ ...curDelKeySet, key ].join( BOUNDARY_MARKER )}`
 		);
 	}
+	/* istanbul ignore next */
 	/** @type {Base["setItem"]} */
-	setItem( key, value, response ) {
+	setItem( key, value, response = DEFAULT_OBJ ) {
          /* istanbul ignore next */ 
-		if( typeof response?.setHeader === 'undefined' ) { return }
+		if( typeof response.setHeader === 'undefined' ) { return }
 		let curDelKeyCsv = getNextDelKeysCandidate( response );
 		response.setHeader( 'Set-Cookie', `${ key }=${ value }` );
-		if( !curDelKeyCsv ) { return }
+		if( !curDelKeyCsv.length ) { return }
 		const curDelKeys = delKeysCookieToArray( curDelKeyCsv );
 		if( curDelKeys.length < 2 ) {
 			curDelKeys.length === 1 &&
@@ -95,7 +97,7 @@ function delKeysCookieToArray( csv ) {
  * @returns {string} as in "" | "\<DEL_MARKER>=\<BOUNDDARY_MARKER SEPARATED VALUES>"
  */
 function getNextDelKeysCandidate( response ) /* istanbul ignore next */ {
-	let curDelKeyCsv = response.getHeader( 'Set-Cookie' );
+	let curDelKeyCsv = response.getHeader?.( 'Set-Cookie' );
 	return !!curDelKeyCsv
 		? curDelKeyCsv.find( c => c.startsWith( DEL_MARKER ) ) ?? ''
 		: '';
