@@ -1,7 +1,4 @@
-import {
-    BOUNDARY_MARKER,
-    DEL_MARKER
-} from '../constants';
+import { DEL_MARKER } from '../constants';
 
 import { Base } from '../base';
 
@@ -94,14 +91,13 @@ export const getStorage = localStorageImplementation => {
     if( typeof storage.current !== 'undefined' ) { return storage }
     storage.set( new ClientStorage( localStorageImplementation ), instanceId );
     const localStorage = storage.current.localStorage;
-    const delKeysId = DEL_MARKER.slice( 0, -1 );
+    const delCookieKeyOffset = DEL_MARKER.length;
     const synchronizeWithServer = () => {
-        let delKeys = jsCookie.get( delKeysId );
-        if( typeof delKeys === 'undefined' ) { return }
-        for( const k of delKeys.split( BOUNDARY_MARKER ) ) {
-            localStorage.removeItem( k );
+        for( let k in jsCookie.get() ) {
+            if( k.length <= delCookieKeyOffset || !k.startsWith( DEL_MARKER ) ) { continue }
+            localStorage.removeItem( k.slice( delCookieKeyOffset ) );
+            jsCookie.remove( k, { path: '/' } );
         }
-        jsCookie.remove( delKeysId );
     };
     startServerWatch( synchronizeWithServer );
     synchronizeWithServer();
@@ -111,12 +107,20 @@ export const getStorage = localStorageImplementation => {
 /** @param {()=>void} onResponse */
 function startServerWatch( onResponse ) /* istanbul ignore next */ { 
     if( typeof ctx.XMLHttpRequest === 'undefined' ) { return }
-    const scheduleSync = () => ctx.setTimeout( onResponse, 0 );
+    let timer;
+    sendXhr = ctx.XMLHttpRequest.prototype.send;
+    const runSync = () => {
+        onResponse();
+        timer = null;
+    };
+    const scheduleSync = () => {
+        if( timer ) { return }
+        timer = ctx.setTimeout( runSync , 250 );
+    };
     function orderServerSync() {
         /* istanbul ignore next */
         this.readyState === ctx.XMLHttpRequest.DONE && scheduleSync();
     }
-    sendXhr = ctx.XMLHttpRequest.prototype.send;
     ctx.XMLHttpRequest.prototype.send = function( ...args ) {
         /* istanbul ignore next */
         this.addEventListener( 'readystatechange', orderServerSync );
