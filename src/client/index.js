@@ -111,14 +111,15 @@ export const getStorage = localStorageImplementation => {
 /** @param {()=>void} onResponse */
 function startServerWatch( onResponse ) /* istanbul ignore next */ { 
     if( typeof ctx.XMLHttpRequest === 'undefined' ) { return }
-    function runServerSync() {
+    const scheduleSync = () => ctx.setTimeout( onResponse, 0 );
+    function orderServerSync() {
         /* istanbul ignore next */
-        this.readyState === ctx.XMLHttpRequest.DONE && onResponse();
+        this.readyState === ctx.XMLHttpRequest.DONE && scheduleSync();
     }
     sendXhr = ctx.XMLHttpRequest.prototype.send;
     ctx.XMLHttpRequest.prototype.send = function( ...args ) {
         /* istanbul ignore next */
-        this.addEventListener( 'readystatechange', runServerSync );
+        this.addEventListener( 'readystatechange', orderServerSync );
         /* istanbul ignore next */
         sendXhr.apply( this, args );
     };
