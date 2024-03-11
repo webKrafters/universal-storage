@@ -1,4 +1,4 @@
-import { BOUNDARY_MARKER, DEL_MARKER } from '../constants';
+import { DEL_MARKER } from '../constants';
 
 import { ClientStorage, discardStorage, getStorage, storage } from '.';
 
@@ -26,34 +26,45 @@ describe( 'Universal Storage: Client', () => {
                 expect( instance2.current ).toBe( instance.current );
                 expect( instance2.current ).toBe( storage.current );
             } );
-            test( 'removes from the storage all entries identified for deletion by the server', () => {
-                discardStorage();
-                jsCookie.get.mockReset();
-                jsCookie.remove.mockClear();
-                const DELETE_PENDING_KEYS = [ 'KEY1', 'KEY2' ];
-                jsCookie.get.mockReturnValue( DELETE_PENDING_KEYS.join( BOUNDARY_MARKER ) );
-                const localStorage = { removeItem: jest.fn() };
-                getStorage( localStorage );
-                expect( localStorage.removeItem ).toHaveBeenCalledTimes( DELETE_PENDING_KEYS.length );
-                expect( jsCookie.get ).toHaveBeenCalledTimes( 1 );
-                expect( jsCookie.get ).toHaveBeenCalledWith( DEL_MARKER.slice( 0, -1 ) );
-                expect( jsCookie.remove ).toHaveBeenCalledTimes( 1 );
-                expect( jsCookie.remove ).toHaveBeenCalledWith( DEL_MARKER.slice( 0, -1 ) );
-            } );
-            test( 'observes the server new list of removables after each server trip', () => {
-                discardStorage();
-                jsCookie.get.mockClear();
-                jsCookie.remove.mockClear();
-                const DELETE_PENDING_KEYS = [ 'KEY1', 'KEY2' ];
-                const localStorage = { removeItem: jest.fn() };
-                getStorage( localStorage );
-                jsCookie.get.mockReturnValue( DELETE_PENDING_KEYS.join( BOUNDARY_MARKER ) );
-                expect( localStorage.removeItem ).toHaveBeenCalledTimes( DELETE_PENDING_KEYS.length );
-                expect( jsCookie.get ).toHaveBeenCalledTimes( 1 );
-                expect( jsCookie.get ).toHaveBeenCalledWith( DEL_MARKER.slice( 0, -1 ) );
-                expect( jsCookie.remove ).toHaveBeenCalledTimes( 1 );
-                expect( jsCookie.remove ).toHaveBeenCalledWith( DEL_MARKER.slice( 0, -1 ) );
-            } );
+            describe( 'browser-server synchronization', () => {
+                let testRunner;
+                beforeAll(() => {
+                    testRunner = storageKeys => {
+                        discardStorage();
+                        jsCookie.get.mockReset();
+                        jsCookie.remove.mockClear();
+                        const DELETE_PENDING_KEYS = storageKeys.map( k => `${ DEL_MARKER }${ k }` );
+                        jsCookie.get.mockReturnValue({
+                            aKey: 'some key shorter than del marker: coverage test',
+                            myFunnyLongerKey: 'some key longer def longer than del marker: coverage test',
+                            [ DELETE_PENDING_KEYS[ 0 ] ]: 1,
+                            [ 't'.repeat( DEL_MARKER.length ) ]: 'some key equal in length to the del marker: coverage test',
+                            [ DELETE_PENDING_KEYS[ 1 ] ]: 1
+                        });
+                        const localStorage = { removeItem: jest.fn() };
+                        getStorage( localStorage );
+                        expect( localStorage.removeItem ).toHaveBeenCalledTimes( storageKeys.length );
+                        expect( localStorage.removeItem.mock.calls[ 0 ] ).toEqual([ storageKeys[ 0 ] ]);
+                        expect( localStorage.removeItem.mock.calls[ 1 ] ).toEqual([ storageKeys[ 1 ] ]);
+                        expect( jsCookie.get ).toHaveBeenCalledTimes( 1 );
+                        expect( jsCookie.remove ).toHaveBeenCalledTimes( 2 );
+                        expect( jsCookie.remove.mock.calls[ 0 ] ).toEqual([
+                            DELETE_PENDING_KEYS[ 0 ], expect.objectContaining({ path: '/' })
+                        ]);
+                        expect( jsCookie.remove.mock.calls[ 1 ] ).toEqual([
+                            DELETE_PENDING_KEYS[ 1 ], expect.objectContaining({ path: '/' })
+                        ]);
+                    };
+                });
+                test(
+                    'removes from the storage all entries identified for deletion by the server',
+                    () => testRunner([ 'KEY1', 'KEY2'] )
+                );
+                test(
+                    'observes the server new list of removables after each server trip',
+                    () => testRunner([ 'KEYI', 'KEYII' ])
+                );
+            });
         } );
         test( 'uses discardStorage(...) to unset current instance', () => {
             discardStorage();

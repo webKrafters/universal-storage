@@ -1,4 +1,4 @@
-import { BOUNDARY_MARKER, DEL_MARKER } from '../constants';
+import { DEL_MARKER } from '../constants';
 
 import { ServerStorage, discardStorage, getStorage, storage } from '.';
 
@@ -56,139 +56,35 @@ describe( 'Universal Storage: Client', () => {
         } );
     } );
     describe( `removeItem(...)`, () => {
-        let response, key, value;
+        let key, response, value;
         beforeAll(() => {
-            key = 'TEST_KEY_COOKIE3';
-            response = {
-                getHeader: jest.fn(),
-                setHeader: jest.fn()
-            };
-            value = 'VAL122';
-            new ServerStorage().removeItem( key, value, response );
-        });
-        test( 'sets cookie response header twice', () => {
-            expect( response.setHeader ).toHaveBeenCalledTimes( 2 );
+            key = 'TEST_KEY_COOKIE54';
+            value = 'VALUE122';
+            response = { setHeader: jest.fn() };
+            ( new ServerStorage() ).removeItem( key, value, response );
         } );
-        test( 'sets cookie response header for removal', () => {
-            const setHeaderCall0 = response.setHeader.mock.calls[ 0 ];
-            expect( setHeaderCall0[ 0 ] ).toStrictEqual( 'Set-Cookie' );
-            expect( setHeaderCall0[ 1 ] ).toStrictEqual( `${ key }=${ value }; max-age=0` )
+        test( 'sets response headers twice', () => expect( response.setHeader ).toHaveBeenCalledTimes( 2 ) );
+        test( 'first set-cookie issues a command on the client to remove item from storage', () => {
+            expect( response.setHeader.mock.calls[ 0 ] ).toEqual([ 'Set-Cookie', `${ key }=${ value }; max-age=0` ]);
         } );
-        test( 'sets cookie response header with deleted localstorage entry keys for client synchronization', () => {
-            const setHeaderCall1 = response.setHeader.mock.calls[ 1 ];
-            expect( setHeaderCall1[ 0 ] ).toStrictEqual( 'Set-Cookie' );
-            expect( setHeaderCall1[ 1 ] ).toStrictEqual( `${ DEL_MARKER }${ key }` )
-        } );
-        test( 'coverage test: for localstorage delete-ready entry keys accrual', () => {
-            const currentAccruals = `2056${ BOUNDARY_MARKER }PROCLAIMED`
-            const key = 'TEST_KEY_COOKIE4';
-            const response = {
-                getHeader: jest.fn().mockReturnValueOnce([
-                    'wat=do we need',
-                    'test30=just',
-                    `${ DEL_MARKER }${ currentAccruals }`,
-                    'test100=one hundred'
-                ]),
-                setHeader: jest.fn()
-            };
-            const value = 'VAL502';
-            new ServerStorage().removeItem( key, value, response );
-            // called twice: to remove cookie entry and to record the removed entry key
-            expect( response.setHeader ).toHaveBeenCalledTimes( 2 );
-            expect( response.setHeader.mock.calls[ 0 ] ).toEqual([
-                'Set-Cookie', `${ key }=${ value }; max-age=0`
-            ]);
-            expect( response.setHeader.mock.calls[ 1 ] ).toEqual([
-                'Set-Cookie', `${ DEL_MARKER }${ currentAccruals }${ BOUNDARY_MARKER }${ key }`
-            ]);
-        } );
-        test( 'coverage test: for localstorage delete-ready entry keys accrual re-attempt disallowment', () => {
-            const currentAccruals = `NOT${ BOUNDARY_MARKER }TODAY${ BOUNDARY_MARKER }PROCLAIMED`
-            const key = 'TODAY'; // note: this key already appears in accruals.
-            const response = {
-                getHeader: jest.fn().mockReturnValueOnce([
-                    'wat=do we need',
-                    'test30=just',
-                    `${ DEL_MARKER }${ currentAccruals }`,
-                    'test100=one hundred'
-                ]),
-                setHeader: jest.fn()
-            };
-            const value = 'VAL87';
-            new ServerStorage().removeItem( key, value, response );
-            // while removed from cookies will not be re-entered in the accrual list.
-            expect( response.setHeader ).toHaveBeenCalledTimes( 1 );
-            expect( response.setHeader ).toHaveBeenCalledWith(
-                'Set-Cookie', `${ key }=${ value }; max-age=0`
-            );
+        test( 'second set-cookie issues a command on the client to remove item from local storage', () => {
+            expect( response.setHeader.mock.calls[ 1 ] ).toEqual([ 'Set-Cookie', `${ DEL_MARKER }${ key }=1` ]);
         } );
     } );
     describe( 'setItem(...)', () => {
-        test( 'sets an item into storage', () => {
-            const key = 'TEST_KEY_COOKIE5';
-            const value = 'VALUE512';
-            const response = {
-                getHeader: jest.fn(),
-                setHeader: jest.fn()
-            };
+        let key, response, value;
+        beforeAll(() => {
+            key = 'TEST_KEY_COOKIE5';
+            value = 'VALUE512';
+            response = { setHeader: jest.fn() };
             ( new ServerStorage() ).setItem( key, value, response );
-            expect( response.setHeader ).toHaveBeenCalledTimes( 1 );
-            expect( response.setHeader ).toHaveBeenCalledWith( 'Set-Cookie', `${ key }=${ value }` );
         } );
-        test( 'unregisters newly added key from remove-ready client localstorage keys', () => {
-            const currentAccruals = `2056${ BOUNDARY_MARKER }PROCLAIMED`
-            const key = 'PROCLAIMED';
-            const value = 'VALUE512';
-            const response = {
-                getHeader: jest.fn().mockReturnValueOnce([
-                    'wat=do we need',
-                    'test30=just',
-                    `${ DEL_MARKER }${ currentAccruals }`,
-                    'test100=one hundred'
-                ]),
-                setHeader: jest.fn()
-            };
-            ( new ServerStorage() ).setItem( key, value, response );
-            expect( response.setHeader ).toHaveBeenCalledTimes( 2 );
-            const setHeaderCalls = response.setHeader.mock.calls;
-            expect( setHeaderCalls[ 0 ] ).toEqual([ 'Set-Cookie', `${ key }=${ value }` ]);
-            expect( setHeaderCalls[ 1 ] ).toEqual([ 'Set-Cookie', `${ DEL_MARKER }${ currentAccruals.split( BOUNDARY_MARKER )[ 0 ] }` ]);
+        test( 'sets response headers twice', () => expect( response.setHeader ).toHaveBeenCalledTimes( 2 ) );
+        test( 'first set-cookie issues a command on the client to place an item into storage', () => {
+            expect( response.setHeader.mock.calls[ 0 ] ).toEqual([ 'Set-Cookie', `${ key }=${ value }` ]);
         } );
-        test( 'coverage test: discards the remove-ready client localstorage keys list when bearing lone matching key', () => {
-            const key = '2056';
-            const value = 'VALUE876';
-            const response = {
-                getHeader: jest.fn().mockReturnValueOnce([
-                    'wat=do we need',
-                    'test30=just',
-                    `${ DEL_MARKER }${ key }`,
-                    'test100=one hundred'
-                ]),
-                setHeader: jest.fn()
-            };
-            ( new ServerStorage() ).setItem( key, value, response );
-            expect( response.setHeader ).toHaveBeenCalledTimes( 2 );
-            const setHeaderCalls = response.setHeader.mock.calls;
-            expect( setHeaderCalls[ 0 ] ).toEqual([ 'Set-Cookie', `${ key }=${ value }` ]);
-            expect( setHeaderCalls[ 1 ] ).toEqual([ 'Set-Cookie', `${ DEL_MARKER }${ key }; max-age=0` ]);
-        } );
-        test( 'coverage test: leaves remove-ready client localstorage keys list untouched if no match found therein for entry key', () => {
-            const currentAccruals = `2056${ BOUNDARY_MARKER }PROCLAIMED`
-            const key = 'TEST_KEY_COOKIE6';
-            const value = 'VALUE960';
-            const response = {
-                getHeader: jest.fn().mockReturnValueOnce([
-                    'wat=do we need',
-                    'test30=just',
-                    `${ DEL_MARKER }${ currentAccruals }`,
-                    'test100=one hundred'
-                ]),
-                setHeader: jest.fn()
-            };
-            ( new ServerStorage() ).setItem( key, value, response );
-            // while set in to cookies will not attempt to remove from accrual list.
-            expect( response.setHeader ).toHaveBeenCalledTimes( 1 );
-            expect( response.setHeader ).toHaveBeenCalledWith( 'Set-Cookie', `${ key }=${ value }` );
+        test( 'second set-cookie issues a command on the client to discard any local storage removals pending for this key', () => {
+            expect( response.setHeader.mock.calls[ 1 ] ).toEqual([ 'Set-Cookie', `${ DEL_MARKER }${ key }=1; max-age=0` ]);
         } );
     } );
 } );
