@@ -15,45 +15,19 @@
     "@babel/plugin-proposal-nullish-coalescing-operator": "^7.18.6",
     "@babel/plugin-transform-runtime": "^7.17.0",
     "@babel/preset-env": "^7.20.2",
-    "@types/jest-cli": "^24.3.0",
+    "@types/jest": "^29.5.12",
     "@types/js-cookie": "^3.0.6",
-    "babel-jest": "^26.6.3",
-    "babel-loader": "^8.2.5",
-    "eslint": "^8.29.0",
-    "eslint-config-standard": "^16.0.2",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-jest": "^26.0.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-standard": "^5.0.0",
-    "jest-cli": "^26.6.3",
+    "@types/node": "^20.13.0",
+    "jest": "^29.7.0",
     "js-cookie": "^3.0.5",
-    "typescript": "^4.8.2"
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.2"
   },
   "files": [
-    "package.json",
-    "index.js",
-    "dist/server/index.js",
-    "dist/server/index.d.ts",
-    "dist/index.js",
-    "dist/index.d.ts",
-    "dist/helper/ref/index.js",
-    "dist/helper/ref/index.d.ts",
-    "dist/constants.js",
-    "dist/constants.d.ts",
-    "dist/client/index.js",
-    "dist/client/index.d.ts",
-    "dist/base/index.js",
-    "dist/base/index.d.ts"
+    "dist"
   ],
   "homepage": "https://github.com/webKrafters/universal-storage/readme",
-  "jest": {
-    "collectCoverageFrom": [
-      "src/**/*.js"
-    ],
-    "transform": {
-      "\\.[jt]sx?$": "babel-jest"
-    }
-  },
   "keywords": [
     "browser storage",
     "browser-storage",
@@ -85,7 +59,7 @@
     "universalstorage"
   ],
   "license": "MIT",
-  "main": "index.js",
+  "main": "dist/index.js",
   "name": "@webkrafters/universal-storage",
   "peerDependencies": {
     "js-cookie": ">= 1.0"
@@ -98,13 +72,12 @@
     "url": "git+https://github.com/webKrafters/universal-storage.git"
   },
   "scripts": {
-    "build": "eslint --fix && rm -rf dist && babel src -d dist --ignore '**/*.test.js' && tsc",
-    "postbuild": "node ./post-builder",
-    "test": "eslint --fix && jest --coverage --updateSnapshot",
+    "build": "rm -rf dist && tsc && babel dist -d dist",
+    "test": "jest --coverage --updateSnapshot",
     "test:clean": "jest --clearCache",
     "test:core": "jest --updateSnapshot",
-    "test:watch": "eslint --fix && jest --updateSnapshot --watchAll"
+    "test:watch": "jest --updateSnapshot --watchAll"
   },
   "types": "dist/index.d.ts",
-  "version": "0.0.997"
+  "version": "1.0.0"
 }

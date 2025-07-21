@@ -1,96 +1,108 @@
+import type { BaseStorage, Id } from '..';
+
+type This = typeof globalThis;
+
+interface Context {
+    localStorage : BaseStorage;
+    setTimeout : (
+        handler : ( ...args: Array<unknown> ) => void,
+        timeout? : number,
+        ...args : Array<unknown>
+    ) => number;
+    XMLHttpRequest : This["XMLHttpRequest"];
+};
+
 import { DEL_MARKER } from '../constants';
 
-import { Base } from '../base';
+import { BaseStorage as Base } from '../base';
 
 import { StorageRef } from '../helper/ref';
 
 const jsCookie = require( 'js-cookie' );
 
 /* istanbul ignore next */
-const ctx = typeof window !== 'undefined'
+const ctx = (
+    typeof window !== 'undefined'
     ? window
     : typeof self !== 'undefined'
         ? self
         : typeof global !== 'undefined'
             ? global
-            : {};
+            : {}
+) as Context;
 
 /* istanbul ignore next */
 if( !ctx.localStorage ) { ctx.localStorage = new Base() }
 /* istanbul ignore next */
-if( !ctx.setTimeout ) { ctx.setTimeout = ( cb, t, ...args ) => cb( args ) }
+if( !ctx.setTimeout ) {
+    ctx.setTimeout = ( cb, t, ...args ) => {
+        cb( ...args );
+        return 1;
+    };
+}
 
 export class ClientStorage extends Base {
-    /**
-     * @readonly
-     * @type {LocalStorageType}
-     */
-    #localStorage;
-    /**
-     * @param {LocalStorageType<P>} [localStorageImplementation]
-     * @template [P={}]
-     */
+    private _localStorage : BaseStorage;
     constructor( localStorageImplementation = ctx.localStorage ) {
         super();
-        this.#localStorage = localStorageImplementation;
+        this._localStorage = localStorageImplementation;
     }
-    get localStorage() { return this.#localStorage }
-    /** @type {Base["getItem"]} */
-    getItem( key ) {
+    get localStorage() { return this._localStorage }
+    getItem( key : string ) : string {
         let val = jsCookie.get( key );
         if( typeof val !== 'undefined' ) {
-            ctx.setTimeout( () => this.#localStorage.setItem( key, val ), 0 );
+            ctx.setTimeout( () => this._localStorage.setItem( key, val ), 0 );
             return val;
         }
-        val = this.#localStorage.getItem( key );
+        val = this._localStorage.getItem( key );
         /* istanbul ignore next */
-        if( typeof val === 'undefined' ) { return };
+        if( typeof val === 'undefined' ) { return null };
         ctx.setTimeout( () => jsCookie.set( key, val ), 0 );
         return val;
     }
-    /** @type {Base["removeItem"]} */
-    removeItem( key ) {
+    removeItem( key : string ) {
         jsCookie.remove( key, { path: '/' } );
-        this.#localStorage.removeItem( key );
+        this._localStorage.removeItem( key );
     }
-    /** @type {Base["setItem"]} */
-    setItem( key, value ) {
+    setItem( key : string, value : unknown ) {
         const val = `${ value }`;
         jsCookie.set( key, val, { path: '/' } );
-        this.#localStorage.setItem( key, val );
+        this._localStorage.setItem( key, val );
     }
 };
 
-/** @type {Id} */
-const instanceId = { value: undefined };
+const instanceId : Id = { value: undefined };
 
-/** @type {StorageRef<ClientStorage>} */
-export const storage = new StorageRef( instanceId );
+export const storage : StorageRef<ClientStorage> =
+    new StorageRef( instanceId );
 
-/** @type {XMLHttpRequest["send"]} */ let sendXhr;
+let sendXhr : XMLHttpRequest["send"];
 
 /**
  * Discards current storage singleton instance. To get 
  * a new one, simply call getStorage(...) afterwards.
  */
-export const discardStorage = () => {
+export function discardStorage() {
     storage.reset( instanceId );
     if( !sendXhr ) { return }
+    // istanbul ignore next
     ctx.XMLHttpRequest.prototype.send = sendXhr;
+    // istanbul ignore next
     sendXhr = undefined;
 }
 
-/**
- * **Singleton**
- * 
- * @param {LocalStorageType<P>} [localStorageImplementation]
- * @returns {StorageRef<ClientStorage>}
- * @template [P={}]
- */
-export const getStorage = localStorageImplementation => {
-    if( typeof storage.current !== 'undefined' ) { return storage }
-    storage.set( new ClientStorage( localStorageImplementation ), instanceId );
-    const localStorage = storage.current.localStorage;
+/** **Singleton** */
+export function getStorage(
+    localStorageImplementation? : BaseStorage
+) : StorageRef<ClientStorage> {
+    if( typeof storage.current !== 'undefined' ) {
+        return storage
+    }
+    storage.set(
+        new ClientStorage( localStorageImplementation ),
+        instanceId
+    );
+    const localStorage = storage.current!.localStorage;
     const delCookieKeyOffset = DEL_MARKER.length;
     const synchronizeWithServer = () => {
         for( let k in jsCookie.get() ) {
@@ -104,8 +116,8 @@ export const getStorage = localStorageImplementation => {
     return storage;
 }
 
-/** @param {()=>void} onResponse */
-function startServerWatch( onResponse ) /* istanbul ignore next */ { 
+/* istanbul ignore next */
+function startServerWatch( onResponse : ()=>void ) {
     if( typeof ctx.XMLHttpRequest === 'undefined' ) { return }
     let timer;
     sendXhr = ctx.XMLHttpRequest.prototype.send;
@@ -122,15 +134,7 @@ function startServerWatch( onResponse ) /* istanbul ignore next */ {
         this.readyState === ctx.XMLHttpRequest.DONE && scheduleSync();
     }
     ctx.XMLHttpRequest.prototype.send = function( ...args ) {
-        /* istanbul ignore next */
         this.addEventListener( 'readystatechange', orderServerSync );
-        /* istanbul ignore next */
         sendXhr.apply( this, args );
     };
 }
-
-/** @typedef {import("..").Id} Id */
-/**
- * @typedef {import("..").LocalStorageType<P>} LocalStorageType
- * @template [P={}]
- */
